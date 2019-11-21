@@ -1,7 +1,9 @@
 const express = require('express')
 const bodyParser = require('body-parser')
 const cookieParser = require('cookie-parser');
+const WebSocket = require('ws');
 
+const wss = new WebSocket.Server({ port: 8080 });
 
 const cors = require('cors')
 const { pool } = require('./config')
@@ -26,9 +28,8 @@ app.use((request, response, next) => {
   next();
 });
 
-const WebSocket = require('ws');
 
-const wss = new WebSocket.Server({ port: 8080 });
+
 wss.on('connection', function connection(ws, req) {
   ws.on('message', function incoming(message) {
     console.log('received: %s', message);
@@ -37,7 +38,6 @@ wss.on('connection', function connection(ws, req) {
 
   ws.send(`You are connected from ${ip}`);
 });
-
 
 const getBooks = (request, response, next) => {
   console.log('responding /books')
