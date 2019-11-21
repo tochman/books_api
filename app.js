@@ -31,12 +31,18 @@ app.use((request, response, next) => {
 
 
 wss.on('connection', function connection(ws, req) {
+
   ws.on('message', function incoming(message) {
     console.log('received: %s', message);
+    
   });
-  const ip = req.connection.remoteAddress;
 
-  ws.send(`You are connected from ${ip}`);
+  ws.on('open', function open() {
+    const ip = req.connection.remoteAddress;
+
+    ws.send(`You are connected from ${ip}`);
+  });
+  ws.send(`You are connected`);
 });
 
 const getBooks = (request, response, next) => {
@@ -69,6 +75,12 @@ const addBook = (request, response, next) => {
           throw error
         }
       })
+      wss.clients.forEach(function each(client) {
+        if (client.readyState === WebSocket.OPEN) {
+          client.send(` ${user.user_name} just added a book!`);
+        }
+      });
+
       response.status(201).json({ status: 'success', message: `Thank you ${user.user_name}!` })
     }
   })
