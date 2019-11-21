@@ -14,6 +14,6 @@
   },
   "scripts": {
     "start": "node app.js",
-    "start:dev": "nodemon app.js" 
+    "start:dev": "nodemon --inspect app.js" 
   }
 }
