@@ -1,12 +1,10 @@
 const express = require('express')
 const bodyParser = require('body-parser')
 const cookieParser = require('cookie-parser');
-const WebSocket = require('ws');
-
-const wss = new WebSocket.Server({ port: 8080 });
 
 const cors = require('cors')
-const { pool } = require('./config')
+const { pool } = require('./dbConfig')
+const { wss, WebSocket } = require('./wsConfig')
 
 const app = express()
 const cookieConfig = {
@@ -22,28 +20,6 @@ app.use(cors({
   origin: ['http://localhost:3474']
 }))
 app.use(cookieParser('xxxxxxxxx'));
-app.use((request, response, next) => {
-  response.header('Access-Control-Allow-Origin', request.headers.origin);
-  response.header('Access-Control-Allow-Methods', 'GET, POST');
-  next();
-})
-
-app.use(cookieParser('books_api_secret_12345'));
-app.use((request, response, next) => {
-  response.header("Access-Control-Allow-Origin", request.headers.origin); // update to match the domain you will make the request from
-  response.header('Access-Control-Allow-Methods', 'GET,POST');
-  next();
-});
-
-
-wss.on('connection', function connection(ws, req) {
-
-  ws.on('message', function incoming(message) {
-    console.log('received: %s', message);
-  });
-
-  ws.send(`You are connected`);
-});
 
 const getBooks = (request, response, next) => {
   console.log('responding /books')
@@ -65,7 +41,9 @@ const addBook = (request, response, next) => {
   let user
   pool.query('SELECT * FROM users WHERE id = $1', [parseInt(uid)], (err, res) => {
     if (err) {
-      response.status(401).json({ status: 'error', message: 'Unauthorized access!' })
+      response
+        .status(401)
+        .json({ status: 'error', message: 'Unauthorized access!' })
     } else {
       user = res.rows[0]
       pool.query('INSERT INTO books (author, title) VALUES ($1, $2)', [author, title], error => {
@@ -73,16 +51,24 @@ const addBook = (request, response, next) => {
           throw error
         }
       })
-      wss.clients.forEach(function each(client) {
+      wss.clients.forEach(client => {
         if (client.readyState === WebSocket.OPEN) {
-          client.send(` ${user.user_name} just added a book!`);
+          client.send(
+            JSON.stringify({
+              status: 'success',
+              message: `${user.user_name} just added a book!`
+            })
+          );
         }
       });
-
-      response.status(201).json({ status: 'success', message: `Thank you ${user.user_name}!` })
+      response
+        .status(201)
+        .json({
+          status: 'success',
+          message: `Thank you ${user.user_name}!`
+        })
     }
   })
-
 }
 
 app
